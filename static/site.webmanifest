@@ -1,1 +1,1 @@
-{"name":"","short_name":"","icons":[{"src":"/android-chrome-192x192.png","sizes":"192x192","type":"image/png"},{"src":"/android-chrome-512x512.png","sizes":"512x512","type":"image/png"}],"theme_color":"#ffffff","background_color":"#ffffff","display":"standalone"}
+{"name":"NoevisAI","short_name":"NoevisAI","icons":[{"src":"noevis-logo.png","sizes":"1100x578","type":"image/png"},{"src":"noevis-logo.ico","sizes":"any","type":"image/x-icon"}],"theme_color":"#445A73","background_color":"#F4F6F6","display":"standalone"}
