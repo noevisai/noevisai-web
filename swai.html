@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SWAI | GPU-Accelerated Smith-Waterman Alignment</title>
+  <meta name="description" content="SWAI is NoevisAI's CUDA-powered Smith-Waterman implementation for faster local genomic sequence alignment across academic and enterprise research workflows." />
+  <link rel="apple-touch-icon" href="static/noevis-logo.png">
+  <link rel="icon" href="static/noevis-logo.ico" sizes="any">
+  <link rel="manifest" href="static/site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --deep-slate-blue: #445a73;
+      --soft-mineral-blue: #7d97a8;
+      --warm-sandstone: #cbbba5;
+      --pale-stone: #e8e2da;
+      --muted-sage: #9fae9b;
+      --soft-cloud: #f4f6f6;
+      --slate: var(--deep-slate-blue);
+      --muted: #5c6f82;
+      --white: #ffffff;
+      --shadow: 0 22px 64px rgba(68, 90, 115, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+      color: var(--slate);
+      background: linear-gradient(180deg, var(--soft-cloud) 0%, #ffffff 44%, var(--pale-stone) 100%);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(68, 90, 115, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(68, 90, 115, 0.055) 1px, transparent 1px);
+      background-size: 80px 80px;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1200px, 92vw);
+      margin: 0 auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(244, 246, 246, 0.9);
+      border-bottom: 1px solid rgba(68, 90, 115, 0.14);
+      backdrop-filter: blur(16px);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px 0;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      line-height: 0;
+    }
+
+    .logo img {
+      width: 148px;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .nav-links a {
+      position: relative;
+      padding-bottom: 4px;
+    }
+
+    .nav-links a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--deep-slate-blue), var(--muted-sage), var(--warm-sandstone));
+      transition: width 0.3s ease;
+    }
+
+    .nav-links a:hover::after,
+    .nav-links a:focus-visible::after {
+      width: 100%;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 22px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      color: var(--white);
+      background: linear-gradient(135deg, var(--deep-slate-blue), var(--soft-mineral-blue));
+      box-shadow: var(--shadow);
+    }
+
+    .btn-secondary {
+      color: var(--slate);
+      background: rgba(255, 255, 255, 0.84);
+      border-color: rgba(68, 90, 115, 0.22);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 52px;
+      align-items: center;
+      padding: 92px 0 54px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      color: var(--deep-slate-blue);
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 32px;
+      height: 2px;
+      background: var(--warm-sandstone);
+    }
+
+    h1 {
+      margin-bottom: 24px;
+      font-family: "Fraunces", "Times New Roman", serif;
+      font-size: clamp(2.7rem, 4.7vw, 4.9rem);
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+    }
+
+    .hero-copy > p {
+      max-width: 640px;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .availability {
+      display: block;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .alignment-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 28px;
+      color: #edf3f5;
+      background: #34495e;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .alignment-panel::after {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      right: -90px;
+      bottom: -110px;
+      background: rgba(159, 174, 155, 0.2);
+      border-radius: 50%;
+    }
+
+    .panel-label {
+      color: #d7e1e5;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .sequence {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 7px;
+      margin-top: 22px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 700;
+    }
+
+    .sequence span {
+      display: grid;
+      aspect-ratio: 1;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 7px;
+    }
+
+    .sequence .match {
+      color: #2f4659;
+      background: #cfdbd1;
+    }
+
+    .panel-rule {
+      height: 1px;
+      margin: 24px 0;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .panel-foot {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-foot strong {
+      display: block;
+      font-size: 1rem;
+    }
+
+    .panel-foot span {
+      color: #c3d0d6;
+      font-size: 0.84rem;
+    }
+
+    section {
+      padding: 72px 0;
+    }
+
+    .section-title {
+      margin-bottom: 12px;
+      font-size: clamp(1.9rem, 3vw, 2.5rem);
+      line-height: 1.15;
+    }
+
+    .section-subtitle {
+      max-width: 720px;
+      color: var(--muted);
+    }
+
+    .evidence {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      gap: 36px;
+      align-items: stretch;
+    }
+
+    .evidence-note {
+      padding: 30px;
+      background: linear-gradient(120deg, rgba(125, 151, 168, 0.18), rgba(232, 226, 218, 0.72));
+      border: 1px solid rgba(125, 151, 168, 0.22);
+      border-radius: 28px;
+    }
+
+    .evidence-note strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 1.15rem;
+    }
+
+    .evidence-note p {
+      color: var(--muted);
+    }
+
+    .benchmark-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .benchmark-item {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(125, 151, 168, 0.2);
+      border-radius: 18px;
+    }
+
+    .benchmark-item strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--slate);
+    }
+
+    .benchmark-item span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .card {
+      padding: 25px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(125, 151, 168, 0.18);
+      border-radius: 22px;
+      box-shadow: 0 16px 46px rgba(68, 90, 115, 0.1);
+    }
+
+    .card-tag {
+      display: block;
+      margin-bottom: 26px;
+      color: var(--soft-mineral-blue);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .card h3 {
+      margin-bottom: 9px;
+      font-size: 1.1rem;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: 36px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(125, 151, 168, 0.2);
+      border-radius: 24px;
+    }
+
+    .workflow-step {
+      padding: 28px;
+      border-right: 1px solid rgba(125, 151, 168, 0.2);
+    }
+
+    .workflow-step:last-child {
+      border-right: 0;
+    }
+
+    .workflow-step span {
+      color: var(--soft-mineral-blue);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+    }
+
+    .workflow-step h3 {
+      margin: 12px 0 8px;
+    }
+
+    .workflow-step p {
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .audience-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+
+    .audience-card {
+      display: grid;
+      gap: 18px;
+      padding: 30px;
+      background: rgba(232, 226, 218, 0.48);
+      border: 1px solid rgba(125, 151, 168, 0.18);
+      border-radius: 24px;
+    }
+
+    .audience-card ul {
+      display: grid;
+      gap: 9px;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .audience-card .btn {
+      justify-self: start;
+    }
+
+    .research {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+      gap: 36px;
+      align-items: center;
+    }
+
+    .research-panel {
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.8);
+      border-left: 4px solid var(--muted-sage);
+      border-radius: 0 20px 20px 0;
+    }
+
+    .research-panel p {
+      color: var(--muted);
+    }
+
+    .roadmap-label {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 5px 11px;
+      color: var(--slate);
+      background: rgba(159, 174, 155, 0.3);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .cta {
+      display: grid;
+      gap: 15px;
+      padding: 48px;
+      color: var(--white);
+      background: linear-gradient(135deg, var(--deep-slate-blue) 0%, #536f86 62%, var(--soft-mineral-blue) 125%);
+      border-radius: 32px;
+      box-shadow: var(--shadow);
+    }
+
+    .cta p {
+      max-width: 700px;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .footer {
+      padding: 40px 0 60px;
+      color: var(--muted);
+      border-top: 1px solid rgba(68, 90, 115, 0.14);
+      font-size: 0.9rem;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fade-up 0.8s ease forwards;
+    }
+
+    @keyframes fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+        animation: none;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .hero,
+      .evidence,
+      .research {
+        grid-template-columns: 1fr;
+      }
+
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .nav-links {
+        display: none;
+      }
+
+      .logo img {
+        width: 118px;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 36px;
+        padding-top: 62px;
+      }
+
+      section {
+        padding: 56px 0;
+      }
+
+      .cards,
+      .audience-grid,
+      .workflow {
+        grid-template-columns: 1fr;
+      }
+
+      .workflow-step {
+        border-right: 0;
+        border-bottom: 1px solid rgba(125, 151, 168, 0.2);
+      }
+
+      .workflow-step:last-child {
+        border-bottom: 0;
+      }
+
+      .cta {
+        padding: 34px;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .nav > .btn {
+        padding: 10px 15px;
+        font-size: 0.88rem;
+      }
+
+      .benchmark-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sequence {
+        gap: 4px;
+        font-size: 0.76rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <a class="logo" href="index.html" aria-label="NoevisAI home">
+        <img src="static/noevis-logo.png" alt="Noevis.ai" width="1100" height="578" />
+      </a>
+      <nav class="nav-links" aria-label="SWAI page navigation">
+        <a href="index.html">Home</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#applications">Applications</a>
+        <a href="#access">Access</a>
+        <a href="#research">Research</a>
+      </nav>
+      <a class="btn btn-primary" href="mailto:david@noevis.ai?subject=SWAI%20benchmark%20briefing">Request briefing</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="container hero" id="top">
+      <div class="hero-copy reveal" style="animation-delay: 0.05s;">
+        <span class="eyebrow">SWAI sequence alignment</span>
+        <h1>Smith-Waterman alignment built for GPU-scale research.</h1>
+        <p>
+          SWAI is NoevisAI's CUDA-powered implementation of local sequence alignment, designed to help
+          research and development teams move demanding genomic workloads forward in less time.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="mailto:david@noevis.ai?subject=SWAI%20benchmark%20results">Request benchmark results</a>
+          <a class="btn btn-secondary" href="mailto:david@noevis.ai?subject=SWAI%20SDK%20pilot">Discuss SDK access</a>
+        </div>
+        <span class="availability">CUDA implementation in development · SDK availability planned</span>
+      </div>
+
+      <div class="alignment-panel reveal" style="animation-delay: 0.14s;" aria-label="Illustration of a local genomic sequence alignment">
+        <span class="panel-label">Local alignment window</span>
+        <div class="sequence" aria-hidden="true">
+          <span>A</span><span>C</span><span class="match">G</span><span class="match">T</span><span class="match">A</span><span class="match">C</span><span class="match">C</span><span>T</span><span>G</span><span>A</span><span>C</span><span>T</span>
+          <span>T</span><span>A</span><span class="match">G</span><span class="match">T</span><span class="match">A</span><span class="match">C</span><span class="match">C</span><span>C</span><span>A</span><span>G</span><span>T</span><span>A</span>
+        </div>
+        <div class="panel-rule"></div>
+        <div class="panel-foot">
+          <div>
+            <strong>CUDA-powered</strong>
+            <span>Parallel GPU computation</span>
+          </div>
+          <div>
+            <strong>Smith-Waterman</strong>
+            <span>Sensitive local alignment</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="container evidence">
+        <div class="reveal" style="animation-delay: 0.05s;">
+          <h2 class="section-title">Performance you can evaluate.</h2>
+          <p class="section-subtitle">
+            Technical teams should be able to judge an accelerator on transparent, reproducible evidence.
+            SWAI benchmark materials are being prepared around the variables that matter in real workflows.
+          </p>
+        </div>
+        <div class="evidence-note reveal" style="animation-delay: 0.12s;">
+          <strong>Benchmark disclosure, not headline claims.</strong>
+          <p>
+            Results will be reported with the comparison implementation, GPU hardware, sequence profile,
+            dataset size, throughput, and alignment-result validation so teams can assess relevance to their own workloads.
+          </p>
+          <div class="benchmark-grid">
+            <div class="benchmark-item"><strong>Throughput</strong><span>Work completed per unit of time</span></div>
+            <div class="benchmark-item"><strong>Runtime</strong><span>Measured against a named baseline</span></div>
+            <div class="benchmark-item"><strong>Workload</strong><span>Sequence lengths and dataset scale</span></div>
+            <div class="benchmark-item"><strong>Environment</strong><span>GPU, software, and test configuration</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="applications">
+      <div class="container">
+        <h2 class="section-title reveal" style="animation-delay: 0.05s;">One alignment engine. Many research questions.</h2>
+        <p class="section-subtitle reveal" style="animation-delay: 0.1s;">
+          SWAI is being developed as a general-purpose foundation for workflows that depend on sensitive local sequence alignment.
+        </p>
+        <div class="cards">
+          <article class="card reveal" style="animation-delay: 0.14s;">
+            <span class="card-tag">Human genomics</span>
+            <h3>Study local variation</h3>
+            <p>Support mutation research by comparing genomic sequences with known references.</p>
+          </article>
+          <article class="card reveal" style="animation-delay: 0.18s;">
+            <span class="card-tag">Pharma</span>
+            <h3>Scale discovery pipelines</h3>
+            <p>Apply sensitive alignment within computational biology and therapeutic research programs.</p>
+          </article>
+          <article class="card reveal" style="animation-delay: 0.22s;">
+            <span class="card-tag">Agriculture</span>
+            <h3>Advance genomic selection</h3>
+            <p>Compare plant and animal DNA for research into resilience, yield, and disease resistance.</p>
+          </article>
+          <article class="card reveal" style="animation-delay: 0.26s;">
+            <span class="card-tag">Metagenomics</span>
+            <h3>Explore complex samples</h3>
+            <p>Accelerate alignment-heavy analysis across microbial and environmental sequence data.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow-fit">
+      <div class="container">
+        <h2 class="section-title reveal" style="animation-delay: 0.05s;">Designed to fit the way technical teams work.</h2>
+        <p class="section-subtitle reveal" style="animation-delay: 0.1s;">
+          The planned SDK will bring SWAI into familiar development environments while keeping infrastructure choices visible.
+        </p>
+        <div class="workflow reveal" style="animation-delay: 0.15s;">
+          <div class="workflow-step">
+            <span>01 · Prepare</span>
+            <h3>Define the workload</h3>
+            <p>Characterize sequence lengths, comparison volume, accuracy needs, and target GPU hardware.</p>
+          </div>
+          <div class="workflow-step">
+            <span>02 · Evaluate</span>
+            <h3>Benchmark in context</h3>
+            <p>Measure SWAI against an agreed baseline using a representative data profile.</p>
+          </div>
+          <div class="workflow-step">
+            <span>03 · Integrate</span>
+            <h3>Plan SDK adoption</h3>
+            <p>Map Python and additional language bindings into existing analysis pipelines as they become available.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="access">
+      <div class="container">
+        <h2 class="section-title reveal" style="animation-delay: 0.05s;">A path for research and enterprise teams.</h2>
+        <p class="section-subtitle reveal" style="animation-delay: 0.1s;">
+          Start with the evaluation route that matches your organization and workload.
+        </p>
+        <div class="audience-grid">
+          <article class="audience-card reveal" style="animation-delay: 0.15s;">
+            <div>
+              <span class="card-tag">Academic research</span>
+              <h3>Evaluate SWAI for a study or collaboration.</h3>
+            </div>
+            <ul>
+              <li>Discuss reproducible benchmark design</li>
+              <li>Explore publication collaboration</li>
+              <li>Register interest in future SDK access</li>
+            </ul>
+            <a class="btn btn-secondary" href="mailto:david@noevis.ai?subject=SWAI%20academic%20evaluation">Propose a research evaluation</a>
+          </article>
+          <article class="audience-card reveal" style="animation-delay: 0.21s;">
+            <div>
+              <span class="card-tag">Enterprise teams</span>
+              <h3>Assess SWAI for a production pipeline.</h3>
+            </div>
+            <ul>
+              <li>Review workload and infrastructure fit</li>
+              <li>Discuss integration and deployment needs</li>
+              <li>Explore future commercial licensing</li>
+            </ul>
+            <a class="btn btn-secondary" href="mailto:david@noevis.ai?subject=SWAI%20commercial%20evaluation">Discuss commercial evaluation</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="research">
+      <div class="container research">
+        <div class="reveal" style="animation-delay: 0.05s;">
+          <span class="roadmap-label">Research in progress</span>
+          <h2 class="section-title">Grounded in a real genomic research program.</h2>
+          <p class="section-subtitle">
+            NoevisAI's chief data scientist is preparing research on genomic alignment in the study of signals
+            associated with early-onset Alzheimer's disease. This work is one application of SWAI's broader
+            sequence-analysis foundation.
+          </p>
+        </div>
+        <div class="research-panel reveal" style="animation-delay: 0.12s;">
+          <p>
+            Publication details and a formal citation will be added when the work is publicly available.
+            Contact the team to discuss the research context or a related collaboration.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="cta reveal" style="animation-delay: 0.05s;">
+        <h2>Evaluate SWAI on a representative alignment workload.</h2>
+        <p>
+          Share your dataset profile, target hardware, and current baseline to start a conversation about benchmarking,
+          research collaboration, or future SDK licensing.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-secondary" href="mailto:david@noevis.ai?subject=SWAI%20evaluation%20request">Request an evaluation</a>
+          <a class="btn btn-primary" href="mailto:david@noevis.ai?subject=SWAI%20commercial%20licensing">Discuss commercial licensing</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>SWAI is under active development. Availability and benchmark results depend on workload and hardware configuration.</p>
+      <p>Copyright 2026 NoevisAI. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>
