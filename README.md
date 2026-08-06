@@ -4,17 +4,20 @@
 
 This is a static website, so no dependency installation or build step is required. Serve the files over HTTP instead of opening them directly with a `file://` URL; this more closely matches production browser behavior.
 
-From the repository directory, start a local server:
+From the workspace root (the directory that contains `noevisai-web`), enter the website directory and start a local server:
 
 ```sh
+cd noevisai-web
 python3 -m http.server 8000
 ```
+
+If your terminal is already inside `noevisai-web`, run only the `python3` command.
 
 Then open the following pages in a browser:
 
 - Homepage: <http://localhost:8000/>
 - CogniScan: <http://localhost:8000/mripredictor.html>
-- SWAI: <http://localhost:8000/swai.html>
+- WarpHelix: <http://localhost:8000/warphelix.html>
 
 When reviewing a feature:
 
