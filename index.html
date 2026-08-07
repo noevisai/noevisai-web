@@ -127,6 +127,70 @@
       width: 100%;
     }
 
+    .mobile-menu {
+      display: none;
+      position: relative;
+    }
+
+    .mobile-menu summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 9px 14px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(68, 90, 115, 0.2);
+      border-radius: 999px;
+      color: var(--slate);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .mobile-menu summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .menu-icon {
+      width: 18px;
+      font-size: 1.15rem;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .mobile-menu-panel {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      display: grid;
+      width: min(300px, 88vw);
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid rgba(68, 90, 115, 0.16);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .mobile-menu-panel a {
+      padding: 11px 13px;
+      color: var(--muted);
+      border-radius: 10px;
+    }
+
+    .mobile-menu-panel a:hover,
+    .mobile-menu-panel a:focus-visible {
+      color: var(--slate);
+      background: var(--soft-cloud);
+    }
+
+    .mobile-menu-panel .mobile-cta {
+      margin-top: 6px;
+      color: var(--white);
+      text-align: center;
+      background: linear-gradient(135deg, var(--deep-slate-blue), var(--soft-mineral-blue));
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -368,6 +432,12 @@
       .nav-links {
         display: none;
       }
+      .header-cta {
+        display: none;
+      }
+      .mobile-menu {
+        display: block;
+      }
       .hero {
         padding-top: 60px;
       }
@@ -394,7 +464,22 @@
         <a href="warphelix.html">WarpHelix</a>
         <a href="#products">Products</a>
       </nav>
-      <a class="btn btn-primary" href="mailto:david@noevis.ai">Request Demo</a>
+      <details class="mobile-menu">
+        <summary>
+          Menu
+          <span class="menu-icon" aria-hidden="true">☰</span>
+        </summary>
+        <nav class="mobile-menu-panel" aria-label="Mobile navigation">
+          <a href="#mission">Mission</a>
+          <a href="#platform">Platform</a>
+          <a href="#focus">Focus Areas</a>
+          <a href="mripredictor.html">CogniScan</a>
+          <a href="warphelix.html">WarpHelix</a>
+          <a href="#products">Products</a>
+          <a class="mobile-cta" href="mailto:david@noevis.ai">Request Demo</a>
+        </nav>
+      </details>
+      <a class="btn btn-primary header-cta" href="mailto:david@noevis.ai">Request Demo</a>
     </div>
   </header>
 
