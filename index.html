@@ -639,5 +639,13 @@
       <p>Copyright 2026 NoevisAI. All rights reserved.</p>
     </div>
   </footer>
+  <script>
+    document.querySelectorAll(".mobile-menu-panel a").forEach((link) => {
+      link.addEventListener("click", () => {
+        const menu = link.closest(".mobile-menu");
+        if (menu) menu.removeAttribute("open");
+      });
+    });
+  </script>
 </body>
 </html>
